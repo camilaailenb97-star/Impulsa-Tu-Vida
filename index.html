@@ -903,7 +903,7 @@ footer{ text-align:center; color:var(--text-muted); font-size:.76rem; margin-top
    de Row Level Security en supabase/schema.sql).
    ====================================================================== */
 const SUPABASE_URL = "https://fxdqlihzxbkrciroomkb.supabase.co/rest/v1/"; // ej: https://abcdefghijklmno.supabase.co
-const SUPABASE_PUBLISHABLE_KEY = "PEGA_AQUI_TU_PUBLISHABLE_KEY"; // la Publishable (anon) key
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_CVwb4qrOFT1rxUy7K5Oxtw_BZio9MBq"; // la Publishable (anon) key
 
 const supabaseConfigurado = /^https?:\/\//.test(SUPABASE_URL) && !SUPABASE_PUBLISHABLE_KEY.startsWith("PEGA_AQUI");
 const sb = supabaseConfigurado ? supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) : null;
