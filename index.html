@@ -2094,13 +2094,7 @@ async function manejarAuthSubmit(){
   const password = document.getElementById("authPasswordInput").value;
   ocultarAuthError();
   ocultarAuthInfo();
-if (authModo === "signup") {
-  const permitidos = ["camila.ailen.b97@gmail.com"];
-  if (!permitidos.includes(email.toLowerCase())) {
-    mostrarAuthError("Este email no tiene acceso.");
-    return;
-  }
-}
+
   if(!email || !password){
     mostrarAuthError("Completa tu email y tu contraseña.");
     return;
