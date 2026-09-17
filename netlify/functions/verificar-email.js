@@ -11,15 +11,17 @@ exports.handler = async (event) => {
       };
     }
 
-    const respuesta = await fetch(
-      `https://fxdqlihzxbkrciroomkb.supabase.co/rest/v1/compradores?email=eq.${encodeURIComponent(email)}&select=email`,
-      {
-        headers: {
-          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
-        }
+    const url =
+      "https://fxdqlihzxbkrciroomkb.supabase.co/rest/v1/compradores?email=eq." +
+      encodeURIComponent(email) +
+      "&select=email";
+
+    const respuesta = await fetch(url, {
+      headers: {
+        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: "Bearer " + process.env.SUPABASE_SERVICE_ROLE_KEY
       }
-    );
+    });
 
     if (!respuesta.ok) {
       throw new Error(await respuesta.text());
