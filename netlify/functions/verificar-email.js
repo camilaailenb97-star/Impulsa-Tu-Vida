@@ -12,7 +12,7 @@ exports.handler = async (event) => {
     }
 
     const respuesta = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/compradores?email=eq.${encodeURIComponent(email)}&select=email`,
+      `${https://fxdqlihzxbkrciroomkb.supabase.co}/rest/v1/compradores?email=eq.${encodeURIComponent(email)}&select=email`,
       {
         headers: {
           apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
