@@ -2094,7 +2094,23 @@ async function manejarAuthSubmit(){
   const password = document.getElementById("authPasswordInput").value;
   ocultarAuthError();
   ocultarAuthInfo();
+if (authModo === "signup") {
+  try {
+    const respuesta = await fetch(
+      "/.netlify/functions/verificar-email?email=" + encodeURIComponent(email)
+    );
 
+    const datos = await respuesta.json();
+
+    if (!datos.autorizado) {
+      mostrarAuthError("Este correo no tiene acceso. Comprá Impulsa Tu Vida para registrarte.");
+      return;
+    }
+  } catch (error) {
+    mostrarAuthError("No se pudo verificar el acceso. Intentá nuevamente.");
+    return;
+  }
+}
   if(!email || !password){
     mostrarAuthError("Completa tu email y tu contraseña.");
     return;
