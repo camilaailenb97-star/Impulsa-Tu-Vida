@@ -2097,7 +2097,7 @@ async function manejarAuthSubmit(){
 if (authModo === "signup") {
   try {
     const respuesta = await fetch(
-      "/.netlify/functions/verificar-email?email=" + encodeURIComponent(email)
+      "https://fxdqlihzxbkrciroomkb.supabase.co/functions/v1/verificar-email?email=" + encodeURIComponent(email)
     );
 
     const datos = await respuesta.json();
