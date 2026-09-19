@@ -1049,6 +1049,27 @@ async function setMetaMesActual(valor){
 // Migración única: si en este navegador había datos guardados de la versión
 // anterior (solo localStorage, sin cuentas), los sube a la cuenta recién
 // iniciada. Se marca con STORAGE_KEY_MIGRADO para no repetirla en cada login.
+   function revisarDatosAntiguos(){
+  const resultado = {
+    gastos: localStorage.getItem("impulsaTuVida_gastos_v1"),
+    ingresos: localStorage.getItem("impulsaTuVida_ingresos_v1"),
+    configuracion: localStorage.getItem("impulsaTuVida_config_v1"),
+    migrado_v1: localStorage.getItem("impulsaTuVida_migrado_supabase_v1"),
+    migrado_v2: localStorage.getItem("impulsaTuVida_migrado_supabase_v2"),
+    todasLasClaves: Object.keys(localStorage)
+  };
+
+  alert(
+    "DIAGNÓSTICO DATOS ANTIGUOS\n\n" +
+    "Gastos: " + (resultado.gastos ? "SÍ HAY DATOS" : "NO") + "\n" +
+    "Ingresos: " + (resultado.ingresos ? "SÍ HAY DATOS" : "NO") + "\n" +
+    "Configuración: " + (resultado.configuracion ? "SÍ HAY DATOS" : "NO") + "\n\n" +
+    "Claves encontradas:\n" +
+    resultado.todasLasClaves.join("\n")
+  );
+}
+
+window.revisarDatosAntiguos = revisarDatosAntiguos;
 async function migrarDatosLocalesSiExisten(){
   if(localStorage.getItem(STORAGE_KEY_MIGRADO)) return;
 
