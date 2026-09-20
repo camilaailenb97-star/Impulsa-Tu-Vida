@@ -1116,7 +1116,7 @@ async function migrarDatosLocalesSiExisten(){
     await sb.from("config_meses").upsert(filasConfig, { onConflict: "user_id,anio,mes" });
   }
 
-  localStorage.setItem(STORAGE_KEY_MIGRADO, "1");
+
 }
 
 /* ======================================================================
