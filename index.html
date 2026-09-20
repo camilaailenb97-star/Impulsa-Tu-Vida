@@ -1073,7 +1073,10 @@ window.revisarDatosAntiguos = revisarDatosAntiguos;
 async function migrarDatosLocalesSiExisten(){
   if(localStorage.getItem(STORAGE_KEY_MIGRADO)) return;
 
-  let gastosLocales = [], ingresosLocales = [], configLocal = {};
+  let gastosLocales = [];
+  let ingresosLocales = [];
+  let configLocal = {};
+
   try{ gastosLocales = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }catch(e){}
   try{ ingresosLocales = JSON.parse(localStorage.getItem(STORAGE_KEY_INGRESOS) || "[]"); }catch(e){}
   try{ configLocal = JSON.parse(localStorage.getItem(STORAGE_KEY_CONFIG) || "{}"); }catch(e){}
@@ -1086,37 +1089,49 @@ async function migrarDatosLocalesSiExisten(){
   const uid = sesionActual.user.id;
 
   if(gastosLocales.length){
-    await sb.from("gastos").insert(gastosLocales.map(g => ({
-      id: crypto.randomUUID(),
-      user_id: uid,
-      monto: g.monto,
-      categoria: g.categoria,
-      nota: g.nota || "",
-      fecha: g.fecha,
-      creado_en: g.creadoEn || Date.now(),
-    })));
+    const { error } = await sb.from("gastos").insert(
+      gastosLocales.map(g => ({
+        id: crypto.randomUUID(),
+        user_id: uid,
+        monto: g.monto,
+        categoria: g.categoria,
+        nota: g.nota || "",
+        fecha: g.fecha,
+        creado_en: g.creadoEn || Date.now()
+      }))
+    );
+
+    if(error){
+      alert("ERROR AL RECUPERAR GASTOS:\n\n" + error.message);
+      return;
+    }
   }
 
   if(ingresosLocales.length){
-    await sb.from("ingresos").insert(ingresosLocales.map(i => ({
-      id: crypto.randomUUID(),
-      user_id: uid,
-      monto: i.monto,
-      concepto: i.concepto || "",
-      fecha: i.fecha,
-      creado_en: i.creadoEn || Date.now(),
-    })));
+    const { error } = await sb.from("ingresos").insert(
+      ingresosLocales.map(i => ({
+        id: crypto.randomUUID(),
+        user_id: uid,
+        monto: i.monto,
+        concepto: i.concepto || "",
+        fecha: i.fecha,
+        creado_en: i.creadoEn || Date.now()
+      }))
+    );
+
+    if(error){
+      alert("ERROR AL RECUPERAR INGRESOS:\n\n" + error.message);
+      return;
+    }
   }
 
-  const filasConfig = Object.entries(configLocal).map(([clave, cfg]) => {
-    const [anio, mes] = clave.split("-").map(Number);
-    return { user_id: uid, anio, mes, presupuesto: cfg.presupuesto || 0, meta_ahorro: cfg.metaAhorro || 0 };
-  });
-  if(filasConfig.length){
-    await sb.from("config_meses").upsert(filasConfig, { onConflict: "user_id,anio,mes" });
-  }
+  localStorage.setItem(STORAGE_KEY_MIGRADO, "1");
 
-
+  alert(
+    "DATOS RECUPERADOS ✓\n\n" +
+    "Gastos: " + gastosLocales.length + "\n" +
+    "Ingresos: " + ingresosLocales.length
+  );
 }
 
 /* ======================================================================
