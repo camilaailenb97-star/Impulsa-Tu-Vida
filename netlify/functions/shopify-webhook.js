@@ -2,52 +2,107 @@ const crypto = require("crypto");
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: "Método no permitido" };
+    return {
+      statusCode: 405,
+      body: "Metodo no permitido",
+    };
   }
 
   try {
-    const hmac = event.headers["x-shopify-hmac-sha256"];
-    const hash = crypto
-      .createHmac("sha256", process.env.SHOPIFY_CLIENT_SECRET)
+    const shopifySecret = process.env.SHOPIFY_CLIENT_SECRET;
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!shopifySecret || !supabaseUrl || !supabaseKey) {
+      console.error("Faltan variables de entorno");
+      return {
+        statusCode: 500,
+        body: "Configuracion incompleta",
+      };
+    }
+
+    // Verificar que realmente venga de Shopify
+    const hmacHeader =
+      event.headers["x-shopify-hmac-sha256"] ||
+      event.headers["X-Shopify-Hmac-Sha256"];
+
+    const calculatedHmac = crypto
+      .createHmac("sha256", shopifySecret)
       .update(event.body, "utf8")
       .digest("base64");
 
-    if (!hmac || !crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(hmac))) {
-      return { statusCode: 401, body: "Firma inválida" };
+    if (
+      !hmacHeader ||
+      hmacHeader.length !== calculatedHmac.length ||
+      !crypto.timingSafeEqual(
+        Buffer.from(hmacHeader),
+        Buffer.from(calculatedHmac)
+      )
+    ) {
+      console.error("Firma de Shopify invalida");
+      return {
+        statusCode: 401,
+        body: "Firma invalida",
+      };
     }
 
-    const pedido = JSON.parse(event.body || "{}");
-    const email = (pedido.email || pedido.contact_email || "")
+    const order = JSON.parse(event.body || "{}");
+
+    const email = String(
+      order.email ||
+      order.contact_email ||
+      order.customer?.email ||
+      ""
+    )
       .trim()
       .toLowerCase();
 
     if (!email) {
-      return { statusCode: 400, body: "Pedido sin email" };
+      console.error("El pedido no contiene email");
+      return {
+        statusCode: 400,
+        body: "Pedido sin email",
+      };
     }
 
-    const respuesta = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/compradores`,
+    console.log("Procesando comprador:", email);
+
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/compradores?on_conflict=email`,
       {
         method: "POST",
         headers: {
-          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
           "Content-Type": "application/json",
-          Prefer: "return=minimal"
+          Prefer: "resolution=merge-duplicates,return=minimal",
         },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email }),
       }
     );
 
-    if (!respuesta.ok) {
-      const error = await respuesta.text();
-      console.error(error);
-      return { statusCode: 500, body: "Error guardando comprador" };
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Error de Supabase:", response.status, errorText);
+
+      return {
+        statusCode: 500,
+        body: "Error guardando comprador",
+      };
     }
 
-    return { statusCode: 200, body: "OK" };
+    console.log("Comprador autorizado correctamente:", email);
+
+    return {
+      statusCode: 200,
+      body: "OK",
+    };
   } catch (error) {
-    console.error(error);
-    return { statusCode: 500, body: "Error interno" };
+    console.error("Error del webhook:", error);
+
+    return {
+      statusCode: 500,
+      body: "Error interno",
+    };
   }
 };
