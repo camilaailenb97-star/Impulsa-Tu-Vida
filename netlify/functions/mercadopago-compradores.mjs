@@ -110,10 +110,22 @@ export async function sincronizar(env) {
   const emails = new Set();
   const motivos = {};
   const nombresVistos = {}; // nombres de productos aprobados (sirve para ajustar MP_PRODUCTO_TEXTO)
+  const diagnostico = {}; // por producto aprobado: datos para confirmar que es la venta correcta (sin datos sensibles)
   for (const pago of pagos) {
     if (pago.status === "approved") {
       const n = textoDelProducto(pago) || "(sin nombre)";
       nombresVistos[n] = (nombresVistos[n] || 0) + 1;
+      const d = diagnostico[n] || (diagnostico[n] = { ventas: 0, montoMin: null, montoMax: null, monedas: {}, tiposOperacion: {}, fechas: [], conEmailValido: 0, emailsOcultos: [], emailEnOtrosCampos: 0 });
+      d.ventas++;
+      const monto = Number(pago.transaction_amount);
+      if (!isNaN(monto)) { d.montoMin = d.montoMin === null ? monto : Math.min(d.montoMin, monto); d.montoMax = d.montoMax === null ? monto : Math.max(d.montoMax, monto); }
+      d.monedas[pago.currency_id || "?"] = (d.monedas[pago.currency_id || "?"] || 0) + 1;
+      d.tiposOperacion[pago.operation_type || "?"] = (d.tiposOperacion[pago.operation_type || "?"] || 0) + 1;
+      if (d.fechas.length < 5) d.fechas.push(String(pago.date_approved || pago.date_created || "").slice(0, 16));
+      const email = String((pago.payer && pago.payer.email) || "").trim().toLowerCase();
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { d.conEmailValido++; if (d.emailsOcultos.length < 5) d.emailsOcultos.push(ocultarEmail(email)); }
+      const otro = pago.additional_info && pago.additional_info.payer && pago.additional_info.payer.email;
+      if (otro || (pago.metadata && Object.keys(pago.metadata).some(k => /mail/i.test(k)))) d.emailEnOtrosCampos++;
     }
     const ev = evaluarPago(pago, productoTexto);
     if (ev.valido) emails.add(ev.email);
@@ -132,13 +144,20 @@ export async function sincronizar(env) {
     agregadosNuevos: modo === "activo" ? agregados : "0 (modo prueba: no se escribió nada)",
     descartados: motivos,
     nombresDeProductosAprobados: nombresVistos,
+    diagnosticoPorProducto: diagnostico,
   };
 }
 
 export default async () => {
   try {
     const resultado = await sincronizar(process.env);
-    console.log("[mercadopago-compradores]", JSON.stringify(resultado));
+    const { diagnosticoPorProducto, ...resumen } = resultado;
+    console.log("[mercadopago-compradores]", JSON.stringify(resumen));
+    if (diagnosticoPorProducto) {
+      for (const [producto, datos] of Object.entries(diagnosticoPorProducto)) {
+        console.log("[mercadopago-compradores][diagnostico]", JSON.stringify({ producto, ...datos }));
+      }
+    }
     return new Response(JSON.stringify({ ok: resultado.ok }), { status: resultado.ok ? 200 : 500 });
   } catch (error) {
     console.error("[mercadopago-compradores] Error:", error.message);
