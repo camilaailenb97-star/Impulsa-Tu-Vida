@@ -9,7 +9,7 @@
    app instalada, subí el número de CACHE_NAME (ej: "v2" -> "v3") para que
    el service worker descarte la caché vieja.
    ====================================================================== */
-const CACHE_NAME = "impulsa-tu-vida-v4";
+const CACHE_NAME = "impulsa-tu-vida-v5";
 
 const APP_SHELL = [
   "./",

@@ -239,7 +239,7 @@ h1{ font-size:1.4rem; font-weight:800; letter-spacing:-.01em; }
   color:#0a2b22; font-weight:700; font-size:.9rem;
   padding:12px 20px; border-radius:999px; box-shadow:0 12px 30px -10px rgba(95,214,181,.6);
   opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease;
-  z-index:50; white-space:nowrap;
+  z-index:70; width:max-content; max-width:calc(100vw - 32px); text-align:center;
 }
 .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
@@ -397,6 +397,9 @@ h1{ font-size:1.4rem; font-weight:800; letter-spacing:-.01em; }
   padding:12px 14px; border-radius:var(--radius-sm); margin-bottom:10px;
 }
 .alert-msg:last-child{ margin-bottom:0; }
+.aviso-carga{ align-items:center; flex-wrap:wrap; margin-bottom:18px !important; }
+.aviso-carga span{ flex:1; min-width:180px; }
+.aviso-carga[hidden]{ display:none; }
 
 /* ---------- Tu mes (resumen estructurado) ---------- */
 .resumen-row{
@@ -615,6 +618,12 @@ footer{ text-align:center; color:var(--text-muted); font-size:.76rem; margin-top
   <div class="budget-head" style="margin-bottom:18px;">
     <span class="stat-sub" id="authUserEmail"></span>
     <button class="link-btn" id="btnLogout">Cerrar sesión</button>
+  </div>
+
+  <!-- Aviso si no se pudieron cargar los datos (sin conexión, sesión vencida…) -->
+  <div class="alert-msg aviso-carga" id="avisoCarga" role="alert" hidden>
+    <span id="avisoCargaTexto"></span>
+    <button class="btn-save-sm" id="btnReintentarCarga" type="button">Reintentar</button>
   </div>
 
   <!-- ============ Toggle de vista ============ -->
@@ -1068,7 +1077,7 @@ footer{ text-align:center; color:var(--text-muted); font-size:.76rem; margin-top
 </div>
 
 <!-- Cliente oficial de Supabase (carga el global `supabase` con `.createClient`) -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.min.js"></script>
 
 <script>
 /* ======================================================================
@@ -1189,18 +1198,41 @@ async function traerTodasLasFilas(tabla){
   return filas;
 }
 
-async function cargarTodo(){
-  const [gastosRes, ingresosRes, configRes] = await Promise.all([
-    traerTodasLasFilas("gastos").then(data => ({ data }), error => ({ data: [], error })),
-    traerTodasLasFilas("ingresos").then(data => ({ data }), error => ({ data: [], error })),
-    sb.from("config_meses").select("*"),
-  ]);
-  if(gastosRes.error || ingresosRes.error || configRes.error){
-    console.error(gastosRes.error || ingresosRes.error || configRes.error);
-    mostrarToast("No se pudieron cargar todos tus datos. Revisá tu conexión y recargá.");
-  }
+// Contador de cambios hechos desde esta pantalla (registrar, editar, borrar, presupuesto).
+// Si cambia mientras una carga está en curso, esa carga trae una "foto" vieja de la base
+// y no debe pisar lo que la usuaria acaba de guardar: se vuelve a pedir.
+let cambiosLocales = 0;
+let generacionCarga = 0;
 
-  gastos = (gastosRes.data || []).map(fila => ({
+// Trae de Supabase los gastos, ingresos y configuración del usuario logueado.
+// Devuelve true si cargó bien. Si falla (sin conexión, sesión vencida…), NO borra lo que
+// ya está en pantalla: conserva la última versión cargada y muestra un aviso con "Reintentar".
+async function cargarTodo(){
+  for(let intento = 0; intento < 3; intento++){
+    const gen = ++generacionCarga;
+    const cambiosAlEmpezar = cambiosLocales;
+    const [gastosRes, ingresosRes, configRes] = await Promise.all([
+      traerTodasLasFilas("gastos").then(data => ({ data }), error => ({ error })),
+      traerTodasLasFilas("ingresos").then(data => ({ data }), error => ({ error })),
+      sb.from("config_meses").select("*").then(r => r, error => ({ error })),
+    ]);
+    if(gen !== generacionCarga) return true; // empezó otra carga más nueva: que gane esa
+    const error = gastosRes.error || ingresosRes.error || configRes.error;
+    if(error){
+      console.error("Error al cargar datos de Supabase:", error);
+      mostrarAvisoCarga(mensajeErrorSupabase(error, "cargar"));
+      return false;
+    }
+    if(cambiosAlEmpezar !== cambiosLocales) continue; // se guardó algo mientras cargaba: pedir de nuevo
+    aplicarDatosCargados(gastosRes.data, ingresosRes.data, configRes.data || []);
+    ocultarAvisoCarga();
+    return true;
+  }
+  return true;
+}
+
+function aplicarDatosCargados(filasGastos, filasIngresos, filasConfig){
+  gastos = filasGastos.map(fila => ({
     id: fila.id,
     monto: Number(fila.monto),
     categoria: fila.categoria,
@@ -1209,7 +1241,7 @@ async function cargarTodo(){
     creadoEn: Number(fila.creado_en),
   }));
 
-  ingresos = (ingresosRes.data || []).map(fila => ({
+  ingresos = filasIngresos.map(fila => ({
     id: fila.id,
     monto: Number(fila.monto),
     concepto: fila.concepto || "",
@@ -1218,10 +1250,38 @@ async function cargarTodo(){
   }));
 
   configMeses = {};
-  (configRes.data || []).forEach(fila => {
+  filasConfig.forEach(fila => {
     const key = claveMesAnio(fila.anio, fila.mes - 1);
     configMeses[key] = { presupuesto: Number(fila.presupuesto) || 0, metaAhorro: Number(fila.meta_ahorro) || 0 };
   });
+}
+
+// Traduce un error de Supabase a un mensaje claro en español.
+// accion: "cargar" | "guardar" | "eliminar"
+function mensajeErrorSupabase(error, accion){
+  const msg = String((error && (error.message || error.msg)) || error || "");
+  const code = String((error && error.code) || "");
+  const inicio = accion === "cargar" ? "No se pudieron cargar tus datos" : accion === "eliminar" ? "No se pudo eliminar" : "No se pudo guardar";
+  if(/fetch|network|Load failed|NetworkError|ERR_/i.test(msg))
+    return `${inicio}: no hay conexión con el servidor. Revisá tu internet e intentá de nuevo.`;
+  if(code === "42501" || code === "PGRST301" || code === "PGRST303" || /JWT|row-level security|permission/i.test(msg))
+    return `${inicio}: tu sesión venció. Cerrá sesión y volvé a ingresar.`;
+  return `${inicio}. Intentá de nuevo en unos segundos.` + (msg ? ` (Detalle: ${msg})` : "");
+}
+
+function mostrarAvisoCarga(texto){
+  document.getElementById("avisoCargaTexto").textContent = texto +
+    ((gastos.length || ingresos.length) ? " Tus movimientos están guardados; se muestra la última versión cargada." : "");
+  document.getElementById("avisoCarga").hidden = false;
+}
+function ocultarAvisoCarga(){
+  document.getElementById("avisoCarga").hidden = true;
+}
+async function reintentarCarga(){
+  const btn = document.getElementById("btnReintentarCarga");
+  btn.disabled = true;
+  if(await cargarTodo()) render();
+  btn.disabled = false;
 }
 
 // Guarda presupuesto/meta del mes en curso en Supabase (una fila por usuario+año+mes).
@@ -1235,7 +1295,13 @@ async function guardarConfigMesActual(){
     presupuesto: cfg.presupuesto || 0,
     meta_ahorro: cfg.metaAhorro || 0,
   }, { onConflict: "user_id,anio,mes" });
-  if(error) console.error(error);
+  if(error){
+    console.error(error);
+    mostrarToast(mensajeErrorSupabase(error, "guardar"));
+    return false;
+  }
+  cambiosLocales++;
+  return true;
 }
 async function setPresupuestoMesActual(valor){
   const key = claveMesAnio(anioSeleccionado, mesSeleccionado);
@@ -1839,12 +1905,13 @@ async function eliminarMovimiento(tipo, id){
   const { error } = await sb.from(tabla).delete().eq("id", id);
   if(error){
     console.error(error);
-    mostrarToast("No se pudo eliminar. Revisá tu conexión.");
+    mostrarToast(mensajeErrorSupabase(error, "eliminar"));
     render();
     return;
   }
   if(tipo === "gasto") gastos = gastos.filter(g => g.id !== id);
   else ingresos = ingresos.filter(i => i.id !== id);
+  cambiosLocales++;
   mostrarToast("Movimiento eliminado ✓");
   render();
 }
@@ -1920,11 +1987,12 @@ async function guardarEdicion(){
 
   if(error || !data || !data.length){
     if(error) console.error(error);
-    return mostrarErrorEdicion("No se pudo guardar. Revisa tu conexión e intenta de nuevo.");
+    return mostrarErrorEdicion(error ? mensajeErrorSupabase(error, "guardar") : "No se encontró este movimiento en tu cuenta. Recargá la página e intentá de nuevo.");
   }
 
   const mov = (esGasto ? gastos : ingresos).find(x => x.id === edicion.id);
   if(mov) Object.assign(mov, cambios);
+  cambiosLocales++;
 
   // Si cambió la fecha a otro mes, saltamos a ese mes para que se vea dónde quedó.
   const [y, m] = fecha.split("-").map(Number);
@@ -2529,11 +2597,13 @@ async function registrarGasto(){
   btnRegistrar.disabled = false;
 
   if(error){
-    mostrarError("No se pudo guardar. Revisa tu conexión e intenta de nuevo.");
+    console.error(error);
+    mostrarError(mensajeErrorSupabase(error, "guardar"));
     return;
   }
 
   gastos.push(nuevoGasto);
+  cambiosLocales++;
 
   montoInput.value = "";
   notaInput.value = "";
@@ -2591,12 +2661,14 @@ async function registrarIngreso(){
   btnRegistrarIngreso.disabled = false;
 
   if(error){
-    document.getElementById("errorIngresoTexto").textContent = "No se pudo guardar. Revisa tu conexión e intenta de nuevo.";
+    console.error(error);
+    document.getElementById("errorIngresoTexto").textContent = mensajeErrorSupabase(error, "guardar");
     document.getElementById("errorIngresoMsg").classList.add("show");
     return;
   }
 
   ingresos.push(nuevoIngreso);
+  cambiosLocales++;
 
   montoInput.value = "";
   conceptoInput.value = "";
@@ -2724,6 +2796,8 @@ async function onSesionActiva(session){
 // Se dispara cuando no hay sesión (todavía no inició sesión, o cerró sesión).
 function onSesionInactiva(){
   sesionActual = null;
+  generacionCarga++; // descarta cualquier carga en curso del usuario anterior
+  ocultarAvisoCarga();
   gastos = [];
   ingresos = [];
   configMeses = {};
@@ -2857,13 +2931,35 @@ function init(){
   document.getElementById("authEmailInput").addEventListener("input", ocultarAuthError);
   document.getElementById("authPasswordInput").addEventListener("input", ocultarAuthError);
   document.getElementById("btnLogout").addEventListener("click", cerrarSesion);
+  document.getElementById("btnReintentarCarga").addEventListener("click", reintentarCarga);
 
   // Punto de entrada real de los datos: se dispara al cargar la página (con la sesión
   // guardada, si había una) y cada vez que el usuario inicia o cierra sesión.
-  sb.auth.onAuthStateChange((_event, session) => {
-    if(session) onSesionActiva(session);
-    else onSesionInactiva();
+  // Supabase recomienda no llamar a la librería dentro de este callback (puede trabarse),
+  // por eso la respuesta se difiere con setTimeout.
+  sb.auth.onAuthStateChange((evento, session) => {
+    setTimeout(() => manejarCambioDeSesion(evento, session), 0);
   });
+}
+
+// Supabase avisa muchos eventos: INITIAL_SESSION, SIGNED_IN (también al volver a la
+// pestaña), TOKEN_REFRESHED (cada ~1 hora), SIGNED_OUT… Solo se carga todo cuando entra
+// un usuario nuevo. Si es el mismo usuario, una renovación de token solo actualiza la
+// sesión, y al volver a la pestaña se refrescan los datos en segundo plano (sin vaciar nada).
+let usuarioEnPantalla = null;
+function manejarCambioDeSesion(evento, session){
+  if(!session){
+    usuarioEnPantalla = null;
+    onSesionInactiva();
+    return;
+  }
+  sesionActual = session;
+  if(usuarioEnPantalla === session.user.id){
+    if(evento === "SIGNED_IN") cargarTodo().then(ok => { if(ok) render(); });
+    return;
+  }
+  usuarioEnPantalla = session.user.id;
+  onSesionActiva(session);
 }
 
 init();
