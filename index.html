@@ -178,15 +178,17 @@ h1{ font-size:1.4rem; font-weight:800; letter-spacing:-.01em; }
 .amount-field label{ display:block; font-size:.8rem; color:var(--text-secondary); font-weight:600; margin-bottom:6px; }
 .amount-input-row{ display:flex; align-items:baseline; justify-content:center; gap:4px; }
 .currency-sign{ font-size:1.6rem; font-weight:700; color:var(--text-muted); }
-#montoInput{
+#montoInput, #montoIngresoInput, #editMonto{
   width:100%; max-width:220px;
   background:transparent; border:none; outline:none;
   font-family:inherit; font-size:2.6rem; font-weight:800; color:var(--text-primary);
   text-align:center;
   -moz-appearance:textfield;
 }
-#montoInput::-webkit-outer-spin-button, #montoInput::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
-#montoInput::placeholder{ color:var(--text-muted); }
+#montoInput::-webkit-outer-spin-button, #montoInput::-webkit-inner-spin-button,
+#montoIngresoInput::-webkit-outer-spin-button, #montoIngresoInput::-webkit-inner-spin-button,
+#editMonto::-webkit-outer-spin-button, #editMonto::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+#montoInput::placeholder, #montoIngresoInput::placeholder, #editMonto::placeholder{ color:var(--text-muted); }
 
 .chip-row{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
 .chip{
@@ -469,6 +471,74 @@ h1{ font-size:1.4rem; font-weight:800; letter-spacing:-.01em; }
   transition:background .15s ease, color .15s ease;
 }
 .mov-del:active{ background:rgba(242,125,142,.15); color:var(--accent-coral); }
+.mov-del.confirmar{
+  width:auto; padding:0 9px; font-size:.72rem; font-weight:800; font-family:inherit;
+  background:rgba(242,125,142,.15); color:var(--accent-coral);
+}
+.mov-edit{
+  background:none; border:none; color:var(--text-muted); font-size:.95rem; cursor:pointer;
+  width:32px; height:32px; border-radius:8px; flex-shrink:0; line-height:1;
+  transition:background .15s ease, color .15s ease;
+}
+.mov-edit:active{ background:rgba(139,124,246,.18); color:var(--accent-violet); }
+.mov-amount.signo-ingreso{ color:var(--accent-teal); }
+.mov-tag{
+  display:inline-block; font-size:.62rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em;
+  padding:1px 7px; border-radius:999px; margin-left:6px; vertical-align:middle;
+  background:rgba(76,201,138,.14); color:#4cc98a; border:1px solid rgba(76,201,138,.35);
+}
+.ver-todo-row{ text-align:center; margin-top:4px; }
+
+/* ---------- Saldo arrastrado (se distingue de los ingresos del mes) ---------- */
+.tile-arrastre{ border-style:dashed; border-color:rgba(92,124,240,.45); }
+.tile-arrastre .stat-value{ color:var(--accent-blue); }
+
+/* ---------- Historial ---------- */
+.hist-nav{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
+.hist-nav button{
+  width:36px; height:36px; border-radius:50%; border:1px solid var(--border-soft);
+  background:rgba(255,255,255,.05); color:var(--text-primary); font-size:1.1rem; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.hist-nav button:disabled{ opacity:.35; cursor:default; }
+.hist-nav-label{ font-size:1.05rem; font-weight:800; text-transform:capitalize; text-align:center; }
+.hist-filtros{ display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+.hist-dia{
+  font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--text-muted); padding:14px 0 4px; border-bottom:1px solid rgba(255,255,255,.05);
+}
+.hist-dia:first-child{ padding-top:2px; }
+.hist-vacio{ text-align:center; color:var(--text-secondary); font-size:.88rem; padding:22px 8px; }
+.resumen-row.destacado .resumen-label{ color:var(--text-primary); font-weight:800; }
+.resumen-row.destacado .resumen-value{ font-size:1.1rem; }
+.resumen-value.arrastre{ color:var(--accent-blue); }
+
+/* ---------- Saldos mes a mes (Mi año) ---------- */
+.saldo-mes-row{
+  display:flex; align-items:center; gap:10px; padding:11px 6px; border-radius:10px;
+  border-bottom:1px solid rgba(255,255,255,.05); cursor:pointer; transition:background .15s ease;
+}
+.saldo-mes-row:last-child{ border-bottom:none; }
+.saldo-mes-row:hover{ background:rgba(255,255,255,.04); }
+.saldo-mes-info{ flex:1; min-width:0; }
+.saldo-mes-nombre{ font-size:.88rem; font-weight:700; text-transform:capitalize; }
+.saldo-mes-detalle{ font-size:.74rem; color:var(--text-muted); }
+.saldo-mes-cierre{ font-size:.95rem; font-weight:800; text-align:right; flex-shrink:0; }
+
+/* ---------- Ventana de edición de movimientos ---------- */
+.modal-backdrop{
+  position:fixed; inset:0; z-index:60; background:rgba(5,5,18,.72);
+  display:flex; align-items:flex-end; justify-content:center; padding:16px;
+  padding-bottom:calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.modal-backdrop[hidden]{ display:none; }
+.modal-sheet{
+  width:100%; max-width:520px; max-height:calc(100vh - 32px); overflow-y:auto;
+  background:linear-gradient(180deg, #17143a, #100e28);
+}
+.modal-actions{ display:flex; gap:10px; align-items:center; }
+.modal-actions .btn-primary{ flex:1; }
+@media (min-width:600px){ .modal-backdrop{ align-items:center; } }
 
 /* ---------- Cierre final (sin enlaces, sin CTA de venta) ---------- */
 .closing-card{
@@ -488,7 +558,7 @@ h1{ font-size:1.4rem; font-weight:800; letter-spacing:-.01em; }
 footer{ text-align:center; color:var(--text-muted); font-size:.76rem; margin-top:28px; }
 
 @media (max-width:380px){
-  #montoInput{ font-size:2.2rem; }
+  #montoInput, #montoIngresoInput, #editMonto{ font-size:2.2rem; }
   .stat-tile.featured .stat-value{ font-size:1.8rem; }
 }
 </style>
@@ -550,6 +620,7 @@ footer{ text-align:center; color:var(--text-muted); font-size:.76rem; margin-top
   <!-- ============ Toggle de vista ============ -->
   <div class="view-toggle">
     <button class="view-tab active" id="tabVistaMes" type="button">Este mes</button>
+    <button class="view-tab" id="tabVistaHistorial" type="button">Historial</button>
     <button class="view-tab" id="tabVistaAnio" type="button">Mi año</button>
   </div>
 
@@ -644,9 +715,14 @@ footer{ text-align:center; color:var(--text-muted); font-size:.76rem; margin-top
     </div>
   </section>
 
-  <!-- ============ Balance del mes: ingresos, gastos y saldo disponible ============ -->
+  <!-- ============ Balance del mes: saldo arrastrado, ingresos, gastos y dinero disponible ============ -->
   <section class="section">
     <div class="stat-grid">
+      <div class="card stat-tile tile-arrastre">
+        <div class="stat-label">Saldo arrastrado</div>
+        <div class="stat-value" id="statArrastre">$0</div>
+        <div class="stat-sub" id="statArrastreSub">Lo que te quedó del mes anterior</div>
+      </div>
       <div class="card stat-tile">
         <div class="stat-label">Ingresos del mes</div>
         <div class="stat-value" id="statIngresosMes">$0</div>
@@ -655,8 +731,13 @@ footer{ text-align:center; color:var(--text-muted); font-size:.76rem; margin-top
         <div class="stat-label">Gastos del mes</div>
         <div class="stat-value" id="statGastosMes">$0</div>
       </div>
+      <div class="card stat-tile">
+        <div class="stat-label">Resultado del mes</div>
+        <div class="stat-value" id="statResultadoMes">$0</div>
+        <div class="stat-sub">Ingresos − gastos</div>
+      </div>
       <div class="card stat-tile featured">
-        <div class="stat-label">Saldo disponible</div>
+        <div class="stat-label" id="statSaldoLabel">Dinero disponible</div>
         <div class="stat-value" id="statSaldoMes">$0</div>
         <div class="stat-sub" id="statSaldoMesSub"></div>
       </div>
@@ -807,12 +888,14 @@ footer{ text-align:center; color:var(--text-muted); font-size:.76rem; margin-top
   <section class="section card" id="movSection" style="display:none;">
     <div class="section-title">Últimos movimientos</div>
     <div id="movList"></div>
+    <div class="ver-todo-row"><button class="link-btn" data-ir-historial="gastos" type="button">Ver todos los gastos del mes →</button></div>
   </section>
 
   <!-- ============ Últimos ingresos ============ -->
   <section class="section card" id="ingresoSection" style="display:none;">
     <div class="section-title">Últimos ingresos</div>
     <div id="ingresoList"></div>
+    <div class="ver-todo-row"><button class="link-btn" data-ir-historial="ingresos" type="button">Ver todos los ingresos del mes →</button></div>
   </section>
 
   <!-- ============ Cierre ============ -->
@@ -825,11 +908,63 @@ footer{ text-align:center; color:var(--text-muted); font-size:.76rem; margin-top
   </div>
   <!-- ============ /Vista: Este mes ============ -->
 
+  <!-- ============ Vista: Historial (todos los movimientos del mes elegido) ============ -->
+  <div id="vistaHistorial" style="display:none;">
+
+    <section class="section card card-accent card-presupuesto">
+      <div class="hist-nav">
+        <button id="btnHistPrev" type="button" aria-label="Mes anterior">‹</button>
+        <span class="hist-nav-label" id="histPeriodo">—</span>
+        <button id="btnHistNext" type="button" aria-label="Mes siguiente">›</button>
+      </div>
+      <div class="resumen-row">
+        <span class="resumen-label" id="histArrastreLabel">Saldo arrastrado</span>
+        <span class="resumen-value arrastre" id="histArrastre">$0</span>
+      </div>
+      <div class="resumen-row">
+        <span class="resumen-label">Ingresos del mes</span>
+        <span class="resumen-value positivo" id="histIngresos">$0</span>
+      </div>
+      <div class="resumen-row">
+        <span class="resumen-label">Gastos del mes</span>
+        <span class="resumen-value negativo" id="histGastos">$0</span>
+      </div>
+      <div class="resumen-row" id="histAhorroRow" style="display:none;">
+        <span class="resumen-label">Registrado como Ahorro</span>
+        <span class="resumen-value" id="histAhorro">$0</span>
+      </div>
+      <div class="resumen-row">
+        <span class="resumen-label">Saldo del mes (ingresos − gastos)</span>
+        <span class="resumen-value" id="histSaldoMes">$0</span>
+      </div>
+      <div class="resumen-row destacado">
+        <span class="resumen-label" id="histDisponibleLabel">Dinero disponible</span>
+        <span class="resumen-value" id="histDisponible">$0</span>
+      </div>
+    </section>
+
+    <section class="section card">
+      <div class="section-title" id="histListaTitulo">Movimientos del mes</div>
+      <div class="hist-filtros" id="histFiltros">
+        <div class="chip selected" data-filtro="todos">Todos</div>
+        <div class="chip" data-filtro="gastos">Gastos</div>
+        <div class="chip" data-filtro="ingresos">Ingresos</div>
+      </div>
+      <div id="histLista"></div>
+    </section>
+
+  </div>
+  <!-- ============ /Vista: Historial ============ -->
+
   <!-- ============ Vista: Mi año ============ -->
   <div id="vistaAnio" style="display:none;">
 
     <section class="section card card-accent card-presupuesto">
       <div class="section-title" id="resumenAnioTitulo">Resumen del año</div>
+      <div class="resumen-row">
+        <span class="resumen-label" id="anioArrastreLabel">Saldo arrastrado del año anterior</span>
+        <span class="resumen-value arrastre" id="anioArrastre">$0</span>
+      </div>
       <div class="resumen-row">
         <span class="resumen-label">Ingresos totales del año</span>
         <span class="resumen-value" id="anioIngresoTotal">$0</span>
@@ -839,8 +974,12 @@ footer{ text-align:center; color:var(--text-muted); font-size:.76rem; margin-top
         <span class="resumen-value" id="anioGastoTotal">$0</span>
       </div>
       <div class="resumen-row">
-        <span class="resumen-label">Saldo del año</span>
+        <span class="resumen-label">Saldo del año (sin arrastre)</span>
         <span class="resumen-value" id="anioSaldoTotal">$0</span>
+      </div>
+      <div class="resumen-row destacado">
+        <span class="resumen-label" id="anioAcumuladoLabel">Saldo acumulado al cierre</span>
+        <span class="resumen-value" id="anioAcumulado">$0</span>
       </div>
       <div class="resumen-row">
         <span class="resumen-label">Ahorro total real del año</span>
@@ -873,6 +1012,12 @@ footer{ text-align:center; color:var(--text-muted); font-size:.76rem; margin-top
       </div>
     </section>
 
+    <section class="section card">
+      <div class="section-title">Saldos mes a mes</div>
+      <p class="stat-sub" style="margin-bottom:8px;">Cada mes arranca con lo que te quedó del anterior. Tocá un mes para ver todos sus movimientos.</p>
+      <div id="saldosMesAMes"></div>
+    </section>
+
   </div>
   <!-- ============ /Vista: Mi año ============ -->
 
@@ -884,6 +1029,43 @@ footer{ text-align:center; color:var(--text-muted); font-size:.76rem; margin-top
 </div>
 
 <div class="toast" id="toast">Gasto registrado ✓</div>
+
+<!-- ============ Ventana para editar un gasto o ingreso ============ -->
+<div class="modal-backdrop" id="editModal" hidden>
+  <div class="card modal-sheet" role="dialog" aria-modal="true" aria-labelledby="editTitulo">
+    <div class="section-title" id="editTitulo">Editar movimiento</div>
+
+    <div class="amount-field">
+      <label for="editMonto">Monto</label>
+      <div class="amount-input-row">
+        <span class="currency-sign">$</span>
+        <input type="number" id="editMonto" inputmode="decimal" step="0.01" min="0" placeholder="0">
+      </div>
+    </div>
+
+    <div class="field-row" id="editCategoriaRow">
+      <label>Categoría</label>
+      <div class="chip-row" id="editChips"></div>
+    </div>
+
+    <div class="field-row">
+      <label for="editTexto" id="editTextoLabel">Nota (opcional)</label>
+      <input type="text" id="editTexto" class="text-input" maxlength="60">
+    </div>
+
+    <div class="field-row">
+      <label for="editFecha">Fecha</label>
+      <input type="date" id="editFecha" class="date-input">
+    </div>
+
+    <div class="error-msg" id="editError">⚠ <span id="editErrorTexto"></span></div>
+
+    <div class="modal-actions">
+      <button class="link-btn" id="btnEditCancelar" type="button">Cancelar</button>
+      <button class="btn-primary" id="btnEditGuardar" type="button">Guardar cambios</button>
+    </div>
+  </div>
+</div>
 
 <!-- Cliente oficial de Supabase (carga el global `supabase` con `.createClient`) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -989,12 +1171,34 @@ function obtenerConfigMesActual(){
 
 // Trae de Supabase los gastos, ingresos y configuración del usuario logueado
 // y los deja listos en memoria (gastos / ingresos / configMeses) para render().
+// Supabase devuelve como máximo ~1000 filas por consulta. Para que el historial y los
+// saldos acumulados tengan TODOS los movimientos, se piden por tandas hasta agotarlos.
+async function traerTodasLasFilas(tabla){
+  const TANDA = 1000;
+  const filas = [];
+  while(true){
+    const { data, error } = await sb.from(tabla).select("*")
+      .order("creado_en", { ascending: true })
+      .order("id", { ascending: true })
+      .range(filas.length, filas.length + TANDA - 1);
+    if(error) throw error;
+    if(!data || !data.length) break;
+    filas.push(...data);
+    if(data.length < TANDA) break;
+  }
+  return filas;
+}
+
 async function cargarTodo(){
   const [gastosRes, ingresosRes, configRes] = await Promise.all([
-    sb.from("gastos").select("*").order("creado_en", { ascending: true }),
-    sb.from("ingresos").select("*").order("creado_en", { ascending: true }),
+    traerTodasLasFilas("gastos").then(data => ({ data }), error => ({ data: [], error })),
+    traerTodasLasFilas("ingresos").then(data => ({ data }), error => ({ data: [], error })),
     sb.from("config_meses").select("*"),
   ]);
+  if(gastosRes.error || ingresosRes.error || configRes.error){
+    console.error(gastosRes.error || ingresosRes.error || configRes.error);
+    mostrarToast("No se pudieron cargar todos tus datos. Revisá tu conexión y recargá.");
+  }
 
   gastos = (gastosRes.data || []).map(fila => ({
     id: fila.id,
@@ -1164,6 +1368,61 @@ function formatFechaCorta(iso){
 }
 
 /* ======================================================================
+   SALDO ACUMULADO ENTRE MESES
+   El saldo arrastrado NO se guarda en la base de datos: se recalcula siempre a
+   partir de los movimientos reales del usuario. Por eso:
+     - si editás o borrás un movimiento viejo, todos los meses siguientes se
+       actualizan solos;
+     - el arrastre nunca se cuenta dos veces (no es un ingreso más, es la suma
+       de lo que sobró —o faltó— en los meses anteriores);
+     - cada usuario solo ve el suyo, porque se arma con SUS filas (RLS).
+   Si un mes cierra en negativo, ese faltante también se arrastra al siguiente.
+   ====================================================================== */
+
+// Si algún día querés que lo registrado como "Ahorro" se descuente del dinero
+// disponible (como si lo apartaras a otra cuenta), cambiá esto a true.
+const AHORRO_RESTA_DEL_SALDO = false;
+
+// Totales por mes: { "2026-09": { ingresos, gastos, ahorro } }
+function calcularMovimientosPorMes(){
+  const porMes = {};
+  const fila = (clave) => porMes[clave] || (porMes[clave] = { ingresos: 0, gastos: 0, ahorro: 0 });
+  gastos.forEach(g => {
+    const f = fila(g.fecha.slice(0, 7));
+    if(g.categoria === CATEGORIA_AHORRO) f.ahorro += g.monto;
+    else f.gastos += g.monto;
+  });
+  ingresos.forEach(i => { fila(i.fecha.slice(0, 7)).ingresos += i.monto; });
+  return porMes;
+}
+
+function saldoNetoDeMes(f){
+  return f.ingresos - f.gastos - (AHORRO_RESTA_DEL_SALDO ? f.ahorro : 0);
+}
+
+// Saldo completo de un mes: lo arrastrado + lo que pasó en el mes = lo que queda al cierre.
+function calcularSaldoMes(anio, mesIdx, porMes){
+  porMes = porMes || calcularMovimientosPorMes();
+  const clave = claveMesAnio(anio, mesIdx);
+  let arrastre = 0;
+  Object.keys(porMes).forEach(k => { if(k < clave) arrastre += saldoNetoDeMes(porMes[k]); });
+  const f = porMes[clave] || { ingresos: 0, gastos: 0, ahorro: 0 };
+  const saldoDelMes = saldoNetoDeMes(f);
+  return {
+    arrastre,
+    ingresos: f.ingresos, gastos: f.gastos, ahorro: f.ahorro,
+    saldoDelMes,
+    disponible: arrastre + saldoDelMes,
+  };
+}
+
+// Primer mes ("YYYY-MM") con algún movimiento registrado, o null si no hay ninguno.
+function primerMesConDatos(porMes){
+  const claves = Object.keys(porMes).sort();
+  return claves.length ? claves[0] : null;
+}
+
+/* ======================================================================
    CÁLCULOS — el "cerebro" de la app: todo lógica pura, nada de servicios externos
    ====================================================================== */
 function calcularTotales(){
@@ -1227,7 +1486,10 @@ function calcularTotales(){
     const [y, m] = i.fecha.split("-").map(Number);
     if(y === anio && (m - 1) === mesIdx) totalIngresosMes += i.monto;
   });
-  const saldoDisponible = totalIngresosMes - totalMes;
+  const saldo = calcularSaldoMes(anio, mesIdx);
+  const saldoArrastrado = saldo.arrastre;
+  const saldoDelMes = saldo.saldoDelMes;
+  const saldoDisponible = saldo.disponible; // arrastre + ingresos del mes − gastos del mes
 
   const diasTranscurridos = Math.max(diaHoyNum, 1);
   const promedioDiario = totalMes / diasTranscurridos;
@@ -1253,7 +1515,7 @@ function calcularTotales(){
     diaHoyNum, diasDelMes, proyeccionFinDeMes,
     presupuesto, metaAhorro, restantePresupuesto, pctPresupuestoUsado, pctMetaAhorro,
     totalMesAnteriorHastaMismoDia, comparacionPct, comparacionDiff,
-    totalIngresosMes, saldoDisponible,
+    totalIngresosMes, saldoDisponible, saldoArrastrado, saldoDelMes,
   };
 }
 
@@ -1332,14 +1594,31 @@ function render(){
     ? `Promedio diario: ${formatMoney(t.promedioDiario)}`
     : "Todavía no hay movimientos este mes.";
 
+  // Saldo arrastrado: se muestra aparte de los ingresos del mes para que no se confunda con plata nueva.
+  const nombreMesAnterior = nombreMes(new Date(t.anio, t.mesIdx - 1, 1).getMonth(), "long");
+  const arrastreEl = document.getElementById("statArrastre");
+  arrastreEl.textContent = formatMoneySigned(t.saldoArrastrado);
+  arrastreEl.style.color = t.saldoArrastrado < 0 ? "var(--accent-coral)" : "";
+  document.getElementById("statArrastreSub").textContent = t.saldoArrastrado < 0
+    ? `Faltante que viene de ${nombreMesAnterior}`
+    : `Lo que te quedó al cierre de ${nombreMesAnterior}`;
+
   document.getElementById("statIngresosMes").textContent = formatMoney(t.totalIngresosMes);
   document.getElementById("statGastosMes").textContent = formatMoney(t.totalMes);
+  const resultadoEl = document.getElementById("statResultadoMes");
+  resultadoEl.textContent = formatMoneySigned(t.saldoDelMes);
+  resultadoEl.style.color = t.saldoDelMes < 0 ? "var(--accent-coral)" : "";
+
+  const esMesPasado = claveMesAnio(t.anio, t.mesIdx) < hoyISO().slice(0, 7);
+  document.getElementById("statSaldoLabel").textContent = esMesPasado
+    ? `Saldo al cierre de ${nombreMes(t.mesIdx, "long")}`
+    : "Dinero disponible";
   const saldoEl = document.getElementById("statSaldoMes");
   saldoEl.textContent = formatMoneySigned(t.saldoDisponible);
   saldoEl.style.color = t.saldoDisponible < 0 ? "var(--accent-coral)" : "var(--accent-teal)";
-  document.getElementById("statSaldoMesSub").textContent = (t.totalIngresosMes === 0 && t.totalMes === 0)
+  document.getElementById("statSaldoMesSub").textContent = (t.totalIngresosMes === 0 && t.totalMes === 0 && t.saldoArrastrado === 0)
     ? "Registra tus ingresos y gastos para ver tu saldo."
-    : "";
+    : `${formatMoneySigned(t.saldoArrastrado)} arrastrado + ${formatMoney(t.totalIngresosMes)} de ingresos − ${formatMoney(t.totalMes)} de gastos`;
 
   // "Hoy" y "últimos 7 días" solo tienen sentido si se está viendo el mes real en curso.
   document.querySelectorAll("#seccionHoySemana .stat-tile:not(.featured)").forEach(el => {
@@ -1358,37 +1637,14 @@ function render(){
   renderPresupuesto(t);
   renderMeta(t);
   renderResumenAnual();
+  renderHistorial();
 
+  // Últimos movimientos del período que se está viendo (más recientes primero, máximo 8).
+  // El listado completo está en la pestaña "Historial". Editar/eliminar se manejan con
+  // un único listener delegado (ver manejarAccionMovimiento).
   if(hayMovimientos){
-    // Últimos movimientos del período que se está viendo (más recientes primero, máximo 8)
-    const movList = document.getElementById("movList");
     const ultimos = [...movimientosDelMes].sort((a,b) => (b.creadoEn||0) - (a.creadoEn||0)).slice(0,8);
-    movList.innerHTML = ultimos.map(g => {
-      const info = catInfo(g.categoria);
-      return `
-        <div class="mov-item">
-          <span class="mov-dot" style="background:${info.color}"></span>
-          <div class="mov-info">
-            <div class="mov-cat">${info.label}</div>
-            ${g.nota ? `<div class="mov-note">${escapeHTML(g.nota)}</div>` : ""}
-          </div>
-          <div class="mov-right">
-            <div class="mov-amount">${formatMoney(g.monto)}</div>
-            <div class="mov-date">${formatFechaCorta(g.fecha)}</div>
-          </div>
-          <button class="mov-del" data-id="${g.id}" aria-label="Eliminar gasto">✕</button>
-        </div>`;
-    }).join("");
-
-    movList.querySelectorAll(".mov-del").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const id = btn.dataset.id;
-        const { error } = await sb.from("gastos").delete().eq("id", id);
-        if(error){ console.error(error); return; }
-        gastos = gastos.filter(g => g.id !== id);
-        render();
-      });
-    });
+    document.getElementById("movList").innerHTML = ultimos.map(g => htmlMovimiento("gasto", g)).join("");
   }
 
   const ingresosDelMes = ingresos.filter(i => {
@@ -1397,30 +1653,8 @@ function render(){
   });
   document.getElementById("ingresoSection").style.display = ingresosDelMes.length ? "block" : "none";
   if(ingresosDelMes.length){
-    const ingresoList = document.getElementById("ingresoList");
     const ultimosIngresos = [...ingresosDelMes].sort((a,b) => (b.creadoEn||0) - (a.creadoEn||0)).slice(0,8);
-    ingresoList.innerHTML = ultimosIngresos.map(i => `
-        <div class="mov-item">
-          <span class="mov-dot" style="background:var(--accent-teal)"></span>
-          <div class="mov-info">
-            <div class="mov-cat">${i.concepto ? escapeHTML(i.concepto) : "Ingreso"}</div>
-          </div>
-          <div class="mov-right">
-            <div class="mov-amount">${formatMoney(i.monto)}</div>
-            <div class="mov-date">${formatFechaCorta(i.fecha)}</div>
-          </div>
-          <button class="mov-del" data-id="${i.id}" aria-label="Eliminar ingreso">✕</button>
-        </div>`).join("");
-
-    ingresoList.querySelectorAll(".mov-del").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const id = btn.dataset.id;
-        const { error } = await sb.from("ingresos").delete().eq("id", id);
-        if(error){ console.error(error); return; }
-        ingresos = ingresos.filter(i => i.id !== id);
-        render();
-      });
-    });
+    document.getElementById("ingresoList").innerHTML = ultimosIngresos.map(i => htmlMovimiento("ingreso", i)).join("");
   }
 
   if(hayGastosCategoria){
@@ -1515,6 +1749,263 @@ function escapeHTML(str){
   const d = document.createElement("div");
   d.textContent = str;
   return d.innerHTML;
+}
+
+function formatFechaLarga(iso){
+  const [y,m,dd] = iso.split("-").map(Number);
+  return new Date(y, m-1, dd).toLocaleDateString(MONEDA_LOCALE, {weekday:"long", day:"numeric", month:"long"});
+}
+
+/* ======================================================================
+   MOVIMIENTOS — una sola forma de pintar un gasto/ingreso (con editar y
+   eliminar), usada tanto en "Últimos movimientos" como en el Historial.
+   ====================================================================== */
+function htmlMovimiento(tipo, mov, conSigno){
+  const esGasto = tipo === "gasto";
+  const info = esGasto ? catInfo(mov.categoria) : null;
+  const color = esGasto ? info.color : "var(--accent-teal)";
+  const titulo = esGasto ? info.label : (mov.concepto ? escapeHTML(mov.concepto) : "Ingreso");
+  const nota = esGasto && mov.nota ? `<div class="mov-note">${escapeHTML(mov.nota)}</div>` : "";
+  const esAhorro = esGasto && mov.categoria === CATEGORIA_AHORRO;
+  let monto = formatMoney(mov.monto), claseMonto = "";
+  if(conSigno){
+    if(!esGasto){ monto = "+" + monto; claseMonto = "signo-ingreso"; }
+    else if(!esAhorro || AHORRO_RESTA_DEL_SALDO){ monto = "−" + monto; }
+  }
+  const nombre = esGasto ? "gasto" : "ingreso";
+  return `
+    <div class="mov-item">
+      <span class="mov-dot" style="background:${color}"></span>
+      <div class="mov-info">
+        <div class="mov-cat">${titulo}</div>
+        ${nota}
+      </div>
+      <div class="mov-right">
+        <div class="mov-amount ${claseMonto}">${monto}</div>
+        <div class="mov-date">${formatFechaCorta(mov.fecha)}</div>
+      </div>
+      <button class="mov-edit" type="button" data-accion="editar" data-tipo="${tipo}" data-id="${mov.id}" aria-label="Editar ${nombre}">✎</button>
+      <button class="mov-del" type="button" data-accion="eliminar" data-tipo="${tipo}" data-id="${mov.id}" aria-label="Eliminar ${nombre}">✕</button>
+    </div>`;
+}
+
+// Un único listener para todos los botones de editar/eliminar, "ver historial" y saldos mes a mes.
+async function manejarClicMovimientos(e){
+  const irHistorial = e.target.closest("[data-ir-historial]");
+  if(irHistorial){
+    filtroHistorial = irHistorial.dataset.irHistorial;
+    cambiarVista("historial");
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+
+  const irMes = e.target.closest("[data-ir-mes]");
+  if(irMes){
+    const [y, m] = irMes.dataset.irMes.split("-").map(Number);
+    filtroHistorial = "todos";
+    cambiarVista("historial");
+    seleccionarPeriodo(y, m - 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+
+  const btn = e.target.closest("[data-accion]");
+  if(!btn) return;
+  const { accion, tipo, id } = btn.dataset;
+
+  if(accion === "editar"){
+    abrirEdicion(tipo, id);
+    return;
+  }
+
+  if(accion === "eliminar"){
+    // Primer toque: pide confirmación (evita borrar un movimiento por un toque accidental).
+    if(!btn.classList.contains("confirmar")){
+      btn.classList.add("confirmar");
+      btn.textContent = "¿Borrar?";
+      setTimeout(() => {
+        if(btn.isConnected){ btn.classList.remove("confirmar"); btn.textContent = "✕"; }
+      }, 3000);
+      return;
+    }
+    btn.disabled = true;
+    await eliminarMovimiento(tipo, id);
+  }
+}
+
+async function eliminarMovimiento(tipo, id){
+  const tabla = tipo === "gasto" ? "gastos" : "ingresos";
+  const { error } = await sb.from(tabla).delete().eq("id", id);
+  if(error){
+    console.error(error);
+    mostrarToast("No se pudo eliminar. Revisá tu conexión.");
+    render();
+    return;
+  }
+  if(tipo === "gasto") gastos = gastos.filter(g => g.id !== id);
+  else ingresos = ingresos.filter(i => i.id !== id);
+  mostrarToast("Movimiento eliminado ✓");
+  render();
+}
+
+/* ======================================================================
+   EDITAR UN MOVIMIENTO — ventana con monto, categoría/concepto, nota y fecha.
+   Al guardar se actualiza la MISMA fila en Supabase (no se crea una nueva),
+   y como el saldo arrastrado se recalcula, los meses siguientes se corrigen solos.
+   ====================================================================== */
+let edicion = null; // { tipo: "gasto"|"ingreso", id, categoria }
+
+function abrirEdicion(tipo, id){
+  const mov = (tipo === "gasto" ? gastos : ingresos).find(x => x.id === id);
+  if(!mov) return;
+  const esGasto = tipo === "gasto";
+  edicion = { tipo, id, categoria: esGasto ? mov.categoria : null };
+
+  document.getElementById("editTitulo").textContent = esGasto ? "Editar gasto" : "Editar ingreso";
+  document.getElementById("editMonto").value = mov.monto;
+  document.getElementById("editCategoriaRow").style.display = esGasto ? "" : "none";
+  document.getElementById("editTextoLabel").textContent = esGasto ? "Nota (opcional)" : "Concepto (opcional)";
+  const texto = document.getElementById("editTexto");
+  texto.value = esGasto ? (mov.nota || "") : (mov.concepto || "");
+  texto.placeholder = esGasto ? "ej: supermercado, colectivo, farmacia…" : "ej: sueldo, freelance, venta…";
+  const fecha = document.getElementById("editFecha");
+  fecha.value = mov.fecha;
+  fecha.max = hoyISO();
+
+  if(esGasto){
+    const cont = document.getElementById("editChips");
+    cont.innerHTML = CATEGORIAS.map(c => `
+      <div class="chip ${c.key === mov.categoria ? "selected" : ""}" data-key="${c.key}">
+        <span class="dot" style="background:${c.color}"></span>${c.label}
+      </div>`).join("");
+  }
+
+  document.getElementById("editError").classList.remove("show");
+  document.getElementById("editModal").hidden = false;
+  document.getElementById("editMonto").focus();
+}
+
+function cerrarEdicion(){
+  document.getElementById("editModal").hidden = true;
+  edicion = null;
+}
+
+function mostrarErrorEdicion(msg){
+  document.getElementById("editErrorTexto").textContent = msg;
+  document.getElementById("editError").classList.add("show");
+}
+
+async function guardarEdicion(){
+  if(!edicion) return;
+  const esGasto = edicion.tipo === "gasto";
+  const monto = parseFloat(document.getElementById("editMonto").value);
+  const texto = document.getElementById("editTexto").value.trim().slice(0, 60);
+  const fecha = document.getElementById("editFecha").value;
+
+  if(isNaN(monto) || monto <= 0) return mostrarErrorEdicion("Ingresa un monto válido, mayor a cero.");
+  if(esGasto && !edicion.categoria) return mostrarErrorEdicion("Elige una categoría para este gasto.");
+  if(!fecha) return mostrarErrorEdicion("Elige una fecha.");
+  if(fecha > hoyISO()) return mostrarErrorEdicion("La fecha no puede ser posterior a hoy.");
+
+  const cambios = esGasto
+    ? { monto, categoria: edicion.categoria, nota: texto, fecha }
+    : { monto, concepto: texto, fecha };
+
+  const btn = document.getElementById("btnEditGuardar");
+  btn.disabled = true;
+  const { data, error } = await sb.from(esGasto ? "gastos" : "ingresos")
+    .update(cambios).eq("id", edicion.id).select("id");
+  btn.disabled = false;
+
+  if(error || !data || !data.length){
+    if(error) console.error(error);
+    return mostrarErrorEdicion("No se pudo guardar. Revisa tu conexión e intenta de nuevo.");
+  }
+
+  const mov = (esGasto ? gastos : ingresos).find(x => x.id === edicion.id);
+  if(mov) Object.assign(mov, cambios);
+
+  // Si cambió la fecha a otro mes, saltamos a ese mes para que se vea dónde quedó.
+  const [y, m] = fecha.split("-").map(Number);
+  anioSeleccionado = y;
+  mesSeleccionado = m - 1;
+
+  cerrarEdicion();
+  mostrarToast("Cambios guardados ✓");
+  render();
+}
+
+/* ======================================================================
+   HISTORIAL — todos los ingresos y gastos del mes elegido, sin límite,
+   con los totales del período y el saldo arrastrado.
+   ====================================================================== */
+let filtroHistorial = "todos"; // "todos" | "gastos" | "ingresos"
+
+function moverMes(delta){
+  const d = new Date(anioSeleccionado, mesSeleccionado + delta, 1);
+  seleccionarPeriodo(d.getFullYear(), d.getMonth());
+}
+
+function renderHistorial(){
+  const anio = anioSeleccionado, mesIdx = mesSeleccionado;
+  const clave = claveMesAnio(anio, mesIdx);
+  const claveHoy = hoyISO().slice(0, 7);
+  const s = calcularSaldoMes(anio, mesIdx);
+
+  document.getElementById("histPeriodo").textContent = `${nombreMes(mesIdx, "long")} ${anio}`;
+  document.getElementById("btnHistNext").disabled = clave >= claveHoy;
+
+  const mesAnterior = new Date(anio, mesIdx - 1, 1);
+  document.getElementById("histArrastreLabel").textContent = `Saldo arrastrado de ${nombreMes(mesAnterior.getMonth(), "long")}`;
+  const arrastreEl = document.getElementById("histArrastre");
+  arrastreEl.textContent = formatMoneySigned(s.arrastre);
+  arrastreEl.className = "resumen-value " + (s.arrastre < 0 ? "negativo" : "arrastre");
+
+  document.getElementById("histIngresos").textContent = formatMoney(s.ingresos);
+  document.getElementById("histGastos").textContent = formatMoney(s.gastos);
+  document.getElementById("histAhorroRow").style.display = s.ahorro > 0 ? "" : "none";
+  document.getElementById("histAhorro").textContent = formatMoney(s.ahorro);
+
+  const saldoMesEl = document.getElementById("histSaldoMes");
+  saldoMesEl.textContent = formatMoneySigned(s.saldoDelMes);
+  saldoMesEl.className = "resumen-value " + (s.saldoDelMes < 0 ? "negativo" : "positivo");
+
+  document.getElementById("histDisponibleLabel").textContent = clave < claveHoy
+    ? "Saldo al cierre (pasa al mes siguiente)"
+    : "Dinero disponible";
+  const dispEl = document.getElementById("histDisponible");
+  dispEl.textContent = formatMoneySigned(s.disponible);
+  dispEl.className = "resumen-value " + (s.disponible < 0 ? "negativo" : "positivo");
+
+  document.querySelectorAll("#histFiltros .chip").forEach(c => {
+    c.classList.toggle("selected", c.dataset.filtro === filtroHistorial);
+  });
+
+  const movimientos = [
+    ...(filtroHistorial !== "ingresos" ? gastos.filter(g => g.fecha.startsWith(clave)).map(m => ({ tipo: "gasto", m })) : []),
+    ...(filtroHistorial !== "gastos" ? ingresos.filter(i => i.fecha.startsWith(clave)).map(m => ({ tipo: "ingreso", m })) : []),
+  ].sort((a, b) => b.m.fecha.localeCompare(a.m.fecha) || (b.m.creadoEn || 0) - (a.m.creadoEn || 0));
+
+  const etiqueta = filtroHistorial === "gastos" ? "Gastos" : filtroHistorial === "ingresos" ? "Ingresos" : "Movimientos";
+  document.getElementById("histListaTitulo").textContent = `${etiqueta} del mes (${movimientos.length})`;
+
+  const lista = document.getElementById("histLista");
+  if(!movimientos.length){
+    const que = filtroHistorial === "gastos" ? "gastos" : filtroHistorial === "ingresos" ? "ingresos" : "movimientos";
+    lista.innerHTML = `<div class="hist-vacio">No hay ${que} registrados en ${nombreMes(mesIdx, "long")} ${anio}.</div>`;
+    return;
+  }
+
+  let html = "", diaActual = null;
+  movimientos.forEach(({ tipo, m }) => {
+    if(m.fecha !== diaActual){
+      diaActual = m.fecha;
+      html += `<div class="hist-dia">${formatFechaLarga(m.fecha)}</div>`;
+    }
+    html += htmlMovimiento(tipo, m, true);
+  });
+  lista.innerHTML = html;
 }
 
 /* ======================================================================
@@ -1635,10 +2126,8 @@ function actualizarSelectorPeriodo(){
   document.querySelectorAll(".month-pill").forEach(pill => {
     const m = Number(pill.dataset.mes);
     pill.classList.toggle("selected", m === mesSeleccionado);
-    const tieneDatos = gastos.some(g => {
-      const [y, mm] = g.fecha.split("-").map(Number);
-      return y === anioSeleccionado && (mm - 1) === m;
-    });
+    const clave = claveMesAnio(anioSeleccionado, m);
+    const tieneDatos = gastos.some(g => g.fecha.startsWith(clave)) || ingresos.some(i => i.fecha.startsWith(clave));
     pill.classList.toggle("has-data", tieneDatos);
   });
 }
@@ -1658,10 +2147,12 @@ function cambiarAnio(delta){
 function cambiarVista(vista){
   vistaActual = vista;
   document.getElementById("vistaMes").style.display = vista === "mes" ? "block" : "none";
+  document.getElementById("vistaHistorial").style.display = vista === "historial" ? "block" : "none";
   document.getElementById("vistaAnio").style.display = vista === "anio" ? "block" : "none";
   document.getElementById("tabVistaMes").classList.toggle("active", vista === "mes");
+  document.getElementById("tabVistaHistorial").classList.toggle("active", vista === "historial");
   document.getElementById("tabVistaAnio").classList.toggle("active", vista === "anio");
-  document.getElementById("monthScroll").style.display = vista === "mes" ? "flex" : "none";
+  document.getElementById("monthScroll").style.display = vista === "anio" ? "none" : "flex";
 }
 
 /* ======================================================================
@@ -1723,6 +2214,41 @@ function renderResumenAnual(){
   document.getElementById("anioGastoTotal").textContent = formatMoney(r.gastoTotalAnio);
   document.getElementById("anioSaldoTotal").textContent = formatMoneySigned(r.saldoTotalAnio);
   document.getElementById("anioSaldoTotal").className = "resumen-value " + (r.saldoTotalAnio < 0 ? "negativo" : "positivo");
+  // Saldo acumulado: lo que venía de años anteriores + lo que pasó en este año.
+  const porMes = calcularMovimientosPorMes();
+  const arrastreAnio = calcularSaldoMes(r.anio, 0, porMes).arrastre;
+  const acumuladoAnio = calcularSaldoMes(r.anio, 11, porMes).disponible;
+  const anioReal = new Date().getFullYear();
+  document.getElementById("anioArrastreLabel").textContent = `Saldo arrastrado de ${r.anio - 1}`;
+  document.getElementById("anioArrastre").textContent = formatMoneySigned(arrastreAnio);
+  document.getElementById("anioArrastre").className = "resumen-value " + (arrastreAnio < 0 ? "negativo" : "arrastre");
+  document.getElementById("anioAcumuladoLabel").textContent = r.anio === anioReal
+    ? "Saldo acumulado a hoy"
+    : `Saldo acumulado al cierre de ${r.anio}`;
+  document.getElementById("anioAcumulado").textContent = formatMoneySigned(acumuladoAnio);
+  document.getElementById("anioAcumulado").className = "resumen-value " + (acumuladoAnio < 0 ? "negativo" : "positivo");
+
+  // Saldos mes a mes: desde el primer mes con datos hasta el mes en curso (no se inventan meses vacíos antes).
+  const primero = primerMesConDatos(porMes);
+  const claveHoy = hoyISO().slice(0, 7);
+  const filasSaldo = [];
+  for(let m = 0; m < 12; m++){
+    const clave = claveMesAnio(r.anio, m);
+    if(!primero || clave < primero || (clave > claveHoy && !porMes[clave])) continue;
+    const s = calcularSaldoMes(r.anio, m, porMes);
+    filasSaldo.push(`
+      <div class="saldo-mes-row" data-ir-mes="${clave}" role="button" tabindex="0">
+        <div class="saldo-mes-info">
+          <div class="saldo-mes-nombre">${nombreMes(m, "long")}</div>
+          <div class="saldo-mes-detalle">Arrastre ${formatMoneySigned(s.arrastre)} · +${formatMoney(s.ingresos)} · −${formatMoney(s.gastos)}</div>
+        </div>
+        <div class="saldo-mes-cierre" style="color:${s.disponible < 0 ? "var(--accent-coral)" : "var(--accent-teal)"}">${formatMoneySigned(s.disponible)}</div>
+      </div>`);
+  }
+  document.getElementById("saldosMesAMes").innerHTML = filasSaldo.length
+    ? filasSaldo.join("")
+    : `<div class="hist-vacio">No hay movimientos registrados en ${r.anio}.</div>`;
+
   document.getElementById("anioAhorroTotal").textContent = formatMoney(r.ahorroTotalAnio);
   document.getElementById("anioAhorroTotal").className = "resumen-value positivo";
   document.getElementById("anioPromedioMensual").textContent = r.promedioMensual > 0 ? formatMoney(r.promedioMensual) : "Sin datos";
@@ -2011,7 +2537,7 @@ async function registrarGasto(){
 
   montoInput.value = "";
   notaInput.value = "";
-  document.querySelectorAll(".chip").forEach(c => c.classList.remove("selected"));
+  document.querySelectorAll("#chipCategorias .chip").forEach(c => c.classList.remove("selected"));
   categoriaSeleccionada = null;
   fechaInput.value = hoyISO();
 
@@ -2204,6 +2730,8 @@ function onSesionInactiva(){
   presupuestoEditando = false;
   metaEditando = false;
   categoriaSeleccionada = null;
+  filtroHistorial = "todos";
+  cerrarEdicion();
 
   document.getElementById("appMain").style.display = "none";
   document.getElementById("authScreen").style.display = "block";
@@ -2247,6 +2775,44 @@ function init(){
 
   document.getElementById("tabVistaMes").addEventListener("click", () => cambiarVista("mes"));
   document.getElementById("tabVistaAnio").addEventListener("click", () => cambiarVista("anio"));
+  document.getElementById("tabVistaHistorial").addEventListener("click", () => cambiarVista("historial"));
+
+  // Historial: navegar mes a mes (cruza de año) y filtrar por tipo de movimiento.
+  document.getElementById("btnHistPrev").addEventListener("click", () => moverMes(-1));
+  document.getElementById("btnHistNext").addEventListener("click", () => moverMes(1));
+  document.getElementById("histFiltros").addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-filtro]");
+    if(!chip) return;
+    filtroHistorial = chip.dataset.filtro;
+    renderHistorial();
+  });
+
+  // Editar / eliminar movimientos y accesos al historial (listener delegado).
+  document.getElementById("appMain").addEventListener("click", manejarClicMovimientos);
+  document.getElementById("saldosMesAMes").addEventListener("keydown", (e) => {
+    if(e.key === "Enter" || e.key === " "){ e.preventDefault(); manejarClicMovimientos(e); }
+  });
+
+  // Ventana de edición
+  document.getElementById("editChips").addEventListener("click", (e) => {
+    const chip = e.target.closest(".chip");
+    if(!chip || !edicion) return;
+    document.querySelectorAll("#editChips .chip").forEach(c => c.classList.remove("selected"));
+    chip.classList.add("selected");
+    edicion.categoria = chip.dataset.key;
+    document.getElementById("editError").classList.remove("show");
+  });
+  document.getElementById("btnEditGuardar").addEventListener("click", guardarEdicion);
+  document.getElementById("btnEditCancelar").addEventListener("click", cerrarEdicion);
+  document.getElementById("editModal").addEventListener("click", (e) => {
+    if(e.target.id === "editModal") cerrarEdicion();
+  });
+  document.addEventListener("keydown", (e) => {
+    if(e.key === "Escape" && edicion) cerrarEdicion();
+  });
+  document.getElementById("editMonto").addEventListener("keydown", (e) => {
+    if(e.key === "Enter") guardarEdicion();
+  });
   document.getElementById("btnAnioPrev").addEventListener("click", () => cambiarAnio(-1));
   document.getElementById("btnAnioNext").addEventListener("click", () => cambiarAnio(1));
 
