@@ -1,10 +1,11 @@
 // =====================================================================
 // MERCADO PAGO → SUPABASE (tabla "compradores")
 //
-// Función PROGRAMADA de Netlify (corre sola cada 10 minutos; no tiene una URL
-// pública que alguien pueda llamar). Consulta en la cuenta de Mercado Pago los
-// pagos APROBADOS recientes del producto y agrega a "compradores" el email que el
-// cliente ingresó en Impul Tienda, para que pueda registrarse en la app.
+// Lógica de la Edge Function de Supabase "mercadopago-compradores" (index.ts la
+// ejecuta; pg_cron la llama cada 10 minutos con una clave secreta). Consulta en la
+// cuenta de Mercado Pago los pagos APROBADOS recientes del producto y agrega a
+// "compradores" el email que el cliente ingresó en Impul Tienda, para que pueda
+// registrarse en la app.
 //
 // De dónde sale el email:
 //   Impul Tienda crea en tu cuenta una "preferencia de pago" por cada compra, con
@@ -20,13 +21,14 @@
 //   - Solo cuenta pagos con status "approved", de tipo venta ("regular_payment")
 //     y cuyo nombre/descripción contiene MP_PRODUCTO_TEXTO. Recién entonces busca
 //     el email de la compra.
-//   - En Supabase solo AGREGA emails nuevos (ignore-duplicates): nunca modifica
-//     ni borra filas existentes.
+//   - En Supabase solo AGREGA emails nuevos: antes de insertar lee todos los emails
+//     de "compradores" (sin distinguir mayúsculas) y agrega solo los que faltan.
+//     Nunca modifica ni borra filas existentes.
 //
-// Variables de entorno (Netlify → Site configuration → Environment variables):
+// Variables (Supabase → Edge Functions → Secrets):
+//   SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY las pone Supabase solo; no hay que cargarlas.
 //   MP_ACCESS_TOKEN            Access Token de PRODUCCIÓN de tu aplicación de Mercado Pago
-//   SUPABASE_URL               https://fxdqlihzxbkrciroomkb.supabase.co
-//   SUPABASE_SERVICE_ROLE_KEY  clave secreta de Supabase (la misma que usa el webhook de Shopify)
+//   CRON_SECRET                clave que pg_cron envía para poder ejecutar la función
 //   MP_PRODUCTO_TEXTO          parte del nombre del producto tal como figura en Mercado Pago
 //   MP_MODO                    "prueba" (por defecto: no escribe nada, solo informa) o "activo"
 //   MP_DIAS                    cuántos días hacia atrás revisar (por defecto 3; usar 365 una vez
@@ -37,17 +39,14 @@ const MP_API = "https://api.mercadopago.com";
 const TAMANO_PAGINA = 50;
 const MAX_PAGOS = 1000; // tope de seguridad por ejecución
 const CONSULTAS_EN_PARALELO = 5;
-const TIEMPO_MAXIMO_MS = 20000; // Netlify corta las funciones programadas a los 30 s
-const MAX_VENTAS_EN_REGISTRO = 20;
-
-export const config = { schedule: "*/10 * * * *" };
+const TIEMPO_MAXIMO_MS = 20000; // margen amplio dentro del límite de las Edge Functions
 
 // Minúsculas y sin acentos, para comparar nombres de producto.
 export function normalizar(texto) {
   return String(texto || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
 }
 
-// Oculta parte del email para los registros (logs) de Netlify.
+// Oculta parte del email para los registros (logs).
 export function ocultarEmail(email) {
   const [usuario, dominio] = String(email).split("@");
   if (!dominio) return "***";
@@ -117,38 +116,38 @@ async function buscarPagos(token, dias) {
   return pagos;
 }
 
+
+// Lee TODOS los emails que ya están en "compradores" (en minúsculas y sin espacios),
+// de a 1000 filas. Se usa para agregar solo los que faltan: la tabla no tiene un índice
+// único en email, así que la función evita los duplicados comparando antes de insertar.
+export async function leerCompradores(supabaseUrl, clave) {
+  const existentes = new Set();
+  for (let desde = 0; ; desde += 1000) {
+    const r = await fetch(`${supabaseUrl}/rest/v1/compradores?select=email&order=id.asc&limit=1000&offset=${desde}`, {
+      headers: { apikey: clave, Authorization: `Bearer ${clave}` },
+    });
+    if (!r.ok) throw new Error(`Supabase respondió ${r.status}: ${(await r.text()).slice(0, 300)}`);
+    const filas = await r.json();
+    for (const f of filas) { const e = limpiarEmail(f && f.email); if (e) existentes.add(e); }
+    if (filas.length < 1000) return existentes;
+  }
+}
+
+// Inserta filas nuevas (solo emails que no estaban). Nunca modifica ni borra filas.
 async function agregarCompradores(supabaseUrl, clave, emails) {
-  const r = await fetch(`${supabaseUrl}/rest/v1/compradores?on_conflict=email`, {
+  const r = await fetch(`${supabaseUrl}/rest/v1/compradores`, {
     method: "POST",
     headers: {
       apikey: clave,
       Authorization: `Bearer ${clave}`,
       "Content-Type": "application/json",
-      Prefer: "resolution=ignore-duplicates,return=representation", // solo agrega; nunca modifica existentes
+      Prefer: "return=representation",
     },
     body: JSON.stringify(emails.map(email => ({ email }))),
   });
   if (!r.ok) throw new Error(`Supabase respondió ${r.status}: ${(await r.text()).slice(0, 300)}`);
   const insertadas = await r.json().catch(() => []);
   return Array.isArray(insertadas) ? insertadas.length : 0;
-}
-
-// SOLO LECTURA (modo prueba): confirma que la clave de Supabase funciona y cuenta cuántos
-// de estos emails ya están en "compradores" (no devuelve ni registra los emails).
-export async function revisarSupabase(supabaseUrl, clave, emails) {
-  try {
-    const filtro = emails.length ? "&email=in.(" + emails.map(e => '"' + encodeURIComponent(e.replace(/"/g, "")) + '"').join(",") + ")" : "&limit=0";
-    const r = await fetch(`${supabaseUrl}/rest/v1/compradores?select=email${filtro}`, {
-      headers: { apikey: clave, Authorization: `Bearer ${clave}` },
-    });
-    if (!r.ok) return { conexion: `error ${r.status}: ${(await r.text()).slice(0, 200)}` };
-    const filas = await r.json();
-    const existentes = new Set((Array.isArray(filas) ? filas : []).map(f => String(f.email)));
-    const yaRegistrados = emails.filter(e => existentes.has(e)).length;
-    return { conexion: "ok", yaRegistrados, nuevosSiSeActiva: emails.length - yaRegistrados };
-  } catch (error) {
-    return { conexion: "error: " + error.message };
-  }
 }
 
 export async function sincronizar(env, ahora = () => Date.now()) {
@@ -211,10 +210,13 @@ export async function sincronizar(env, ahora = () => Date.now()) {
   }
   if (sinTiempo) contar("pendiente: sin tiempo en esta ejecución");
 
+  // Siempre (también en prueba) se lee la tabla: si la lectura falla, no se escribe nada.
   const lista = [...emails];
+  const existentes = await leerCompradores(supabaseUrl, clave);
+  const nuevos = lista.filter(e => !existentes.has(e));
   let agregados = 0;
-  if (modo === "activo" && lista.length) agregados = await agregarCompradores(supabaseUrl, clave, lista);
-  const supabase = modo === "prueba" ? await revisarSupabase(supabaseUrl, clave, lista) : undefined;
+  if (modo === "activo" && nuevos.length) agregados = await agregarCompradores(supabaseUrl, clave, nuevos);
+  const supabase = { conexion: "ok", filasEnLaTabla: existentes.size, yaRegistrados: lista.length - nuevos.length, nuevos: nuevos.length };
 
   return {
     ok: true, modo, dias, productoTexto: productoTexto || "(sin configurar)",
@@ -232,20 +234,3 @@ export async function sincronizar(env, ahora = () => Date.now()) {
   };
 }
 
-export default async () => {
-  try {
-    const resultado = await sincronizar(process.env);
-    const { diagnosticoPorProducto, ventas, ...resumen } = resultado;
-    console.log("[mercadopago-compradores]", JSON.stringify(resumen));
-    for (const [producto, datos] of Object.entries(diagnosticoPorProducto || {})) {
-      console.log("[mercadopago-compradores][diagnostico]", JSON.stringify({ producto, ...datos }));
-    }
-    for (const venta of (ventas || []).slice(0, MAX_VENTAS_EN_REGISTRO)) {
-      console.log("[mercadopago-compradores][venta]", JSON.stringify(venta));
-    }
-    return new Response(JSON.stringify({ ok: resultado.ok }), { status: resultado.ok ? 200 : 500 });
-  } catch (error) {
-    console.error("[mercadopago-compradores] Error:", error.message);
-    return new Response(JSON.stringify({ ok: false }), { status: 500 });
-  }
-};

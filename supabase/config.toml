@@ -1,0 +1,7 @@
+# Configuración mínima para publicar las Edge Functions con la CLI de Supabase.
+project_id = "fxdqlihzxbkrciroomkb"
+
+# La llama pg_cron con el encabezado x-cron-secret (no con un usuario de la app),
+# así que no usa la verificación de JWT de Supabase: la función valida su propia clave.
+[functions.mercadopago-compradores]
+verify_jwt = false
