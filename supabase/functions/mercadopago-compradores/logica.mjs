@@ -18,7 +18,8 @@
 // Seguridad:
 //   - No confía en avisos externos: lee los pagos directamente de la API oficial
 //     de Mercado Pago con el Access Token de la cuenta (solo lectura).
-//   - Solo cuenta pagos con status "approved", de tipo venta ("regular_payment")
+//   - Solo cuenta pagos cobrados por tu cuenta (collector_id = tu id; descarta tus
+//     propias compras), con status "approved", de tipo venta ("regular_payment")
 //     y cuyo nombre/descripción contiene MP_PRODUCTO_TEXTO. Recién entonces busca
 //     el email de la compra.
 //   - En Supabase solo AGREGA emails nuevos: antes de insertar lee todos los emails
@@ -65,8 +66,11 @@ function textoDelProducto(pago) {
 
 // Decide si un pago es una venta aprobada del producto (todavía sin mirar el email).
 // Devuelve { valido: true, nombre } o { valido: false, motivo }.
-export function evaluarPago(pago, productoTexto) {
+// cuentaId: id de tu cuenta de Mercado Pago. La búsqueda también trae pagos que hiciste
+// vos como compradora; solo valen aquellos en los que tu cuenta es la que cobra.
+export function evaluarPago(pago, productoTexto, cuentaId) {
   if (!pago || pago.status !== "approved") return { valido: false, motivo: "no aprobado" };
+  if (!cuentaId || String(pago.collector_id || "") !== String(cuentaId)) return { valido: false, motivo: "no cobrado por tu cuenta" };
   if (pago.operation_type && pago.operation_type !== "regular_payment") return { valido: false, motivo: "no es una venta (" + pago.operation_type + ")" };
   const nombre = textoDelProducto(pago);
   if (!productoTexto || !normalizar(nombre).includes(normalizar(productoTexto))) return { valido: false, motivo: "otro producto", nombre };
@@ -163,6 +167,9 @@ export async function sincronizar(env, ahora = () => Date.now()) {
   if (faltan.length) return { ok: false, error: "Faltan variables de entorno: " + faltan.join(", ") };
   if (modo === "activo" && !productoTexto) return { ok: false, error: "MP_MODO=activo requiere MP_PRODUCTO_TEXTO (si no, se agregarían compradores de cualquier pago)" };
 
+  const cuenta = await leerMP(token, "/users/me");
+  if (cuenta.error || !cuenta.datos || !cuenta.datos.id) throw new Error(`No se pudo identificar tu cuenta de Mercado Pago (${cuenta.error || "sin id"})`);
+  const cuentaId = cuenta.datos.id;
   const pagos = await buscarPagos(token, dias);
   const motivos = {};
   const contar = m => { motivos[m] = (motivos[m] || 0) + 1; };
@@ -181,7 +188,7 @@ export async function sincronizar(env, ahora = () => Date.now()) {
       d.tiposOperacion[pago.operation_type || "?"] = (d.tiposOperacion[pago.operation_type || "?"] || 0) + 1;
       if (d.fechas.length < 5) d.fechas.push(String(pago.date_approved || pago.date_created || "").slice(0, 16));
     }
-    const ev = evaluarPago(pago, productoTexto);
+    const ev = evaluarPago(pago, productoTexto, cuentaId);
     if (ev.valido) ventas.push(pago);
     else contar(ev.motivo);
   }
