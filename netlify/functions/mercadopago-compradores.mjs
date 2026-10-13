@@ -13,6 +13,9 @@
 //     y cuyo nombre/descripción contiene MP_PRODUCTO_TEXTO.
 //   - En Supabase solo AGREGA emails nuevos (ignore-duplicates): nunca modifica
 //     ni borra filas existentes.
+//   - En modo prueba, además, informa en qué campos de Mercado Pago aparece un
+//     email (pago, orden y preferencia) para ubicar el que el cliente ingresó en
+//     Impul Tienda cuando paga otra persona. Solo lee; los emails salen ocultos.
 //
 // Variables de entorno (Netlify → Site configuration → Environment variables):
 //   MP_ACCESS_TOKEN            Access Token de PRODUCCIÓN de tu aplicación de Mercado Pago
@@ -78,6 +81,65 @@ async function buscarPagos(token, dias) {
   return pagos;
 }
 
+// Recorre un objeto y devuelve [{ campo, email }] con todo valor que parezca un email.
+export function buscarEmails(obj, prefijo = "", encontrados = [], profundidad = 0) {
+  if (!obj || typeof obj !== "object" || profundidad > 6) return encontrados;
+  for (const [clave, valor] of Object.entries(obj)) {
+    const campo = prefijo ? `${prefijo}.${clave}` : clave;
+    if (typeof valor === "string") {
+      const m = valor.match(/[^\s@"'<>,;:|]+@[^\s@"'<>,;:|]+\.[a-z]{2,}/i);
+      if (m) encontrados.push({ campo, email: m[0].trim().toLowerCase() });
+    } else if (valor && typeof valor === "object") {
+      buscarEmails(valor, campo, encontrados, profundidad + 1);
+    }
+  }
+  return encontrados;
+}
+
+async function leerMP(token, ruta) {
+  const r = await fetch(`${MP_API}${ruta}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!r.ok) return { error: r.status };
+  return { datos: await r.json() };
+}
+
+// SOLO LECTURA, solo en modo prueba. Para las ventas aprobadas más recientes busca en
+// qué campos de Mercado Pago aparece un email: el pago, la orden (merchant_order) y la
+// preferencia de pago que creó Impul Tienda (donde suele ir el email del checkout).
+// Sirve para saber de dónde tomar el email que el cliente ingresó en Impul Tienda
+// cuando paga otra persona. Los emails se informan ocultos.
+export async function diagnosticarOrigenEmail(token, pagos, productoTexto, maximo = 5) {
+  const ventas = pagos.filter(p => p && p.status === "approved" && (!p.operation_type || p.operation_type === "regular_payment")
+    && (!productoTexto || normalizar(textoDelProducto(p)).includes(normalizar(productoTexto))));
+  const informe = [];
+  for (const pago of ventas.slice(0, maximo)) {
+    const pagador = String((pago.payer && pago.payer.email) || "").trim().toLowerCase();
+    const encontrados = buscarEmails(pago, "pago");
+    const errores = {};
+    let preferenciaId = null;
+    if (pago.order && pago.order.id) {
+      const orden = await leerMP(token, `/merchant_orders/${encodeURIComponent(pago.order.id)}`);
+      if (orden.error) errores.merchant_order = orden.error;
+      else { buscarEmails(orden.datos, "orden", encontrados); preferenciaId = orden.datos.preference_id || null; }
+    }
+    if (preferenciaId) {
+      const pref = await leerMP(token, `/checkout/preferences/${encodeURIComponent(preferenciaId)}`);
+      if (pref.error) errores.preferencia = pref.error;
+      else buscarEmails(pref.datos, "preferencia", encontrados);
+    }
+    informe.push({
+      producto: textoDelProducto(pago) || "(sin nombre)",
+      fecha: String(pago.date_approved || pago.date_created || "").slice(0, 16),
+      pagador: pagador ? ocultarEmail(pagador) : "(sin email)",
+      tieneOrden: Boolean(pago.order && pago.order.id),
+      tienePreferencia: Boolean(preferenciaId),
+      clavesMetadata: Object.keys(pago.metadata || {}),
+      emails: encontrados.map(e => ({ campo: e.campo, email: ocultarEmail(e.email), igualAlPagador: e.email === pagador })),
+      errores,
+    });
+  }
+  return informe;
+}
+
 async function agregarCompradores(supabaseUrl, clave, emails) {
   const r = await fetch(`${supabaseUrl}/rest/v1/compradores?on_conflict=email`, {
     method: "POST",
@@ -136,6 +198,12 @@ export async function sincronizar(env) {
   let agregados = 0;
   if (modo === "activo" && lista.length) agregados = await agregarCompradores(supabaseUrl, clave, lista);
 
+  let origenEmail;
+  if (modo === "prueba") {
+    try { origenEmail = await diagnosticarOrigenEmail(token, pagos, productoTexto); }
+    catch (error) { origenEmail = [{ error: error.message }]; }
+  }
+
   return {
     ok: true, modo, dias, productoTexto: productoTexto || "(sin configurar)",
     pagosRevisados: pagos.length,
@@ -145,18 +213,22 @@ export async function sincronizar(env) {
     descartados: motivos,
     nombresDeProductosAprobados: nombresVistos,
     diagnosticoPorProducto: diagnostico,
+    origenEmail,
   };
 }
 
 export default async () => {
   try {
     const resultado = await sincronizar(process.env);
-    const { diagnosticoPorProducto, ...resumen } = resultado;
+    const { diagnosticoPorProducto, origenEmail, ...resumen } = resultado;
     console.log("[mercadopago-compradores]", JSON.stringify(resumen));
     if (diagnosticoPorProducto) {
       for (const [producto, datos] of Object.entries(diagnosticoPorProducto)) {
         console.log("[mercadopago-compradores][diagnostico]", JSON.stringify({ producto, ...datos }));
       }
+    }
+    for (const venta of origenEmail || []) {
+      console.log("[mercadopago-compradores][origen-email]", JSON.stringify(venta));
     }
     return new Response(JSON.stringify({ ok: resultado.ok }), { status: resultado.ok ? 200 : 500 });
   } catch (error) {
