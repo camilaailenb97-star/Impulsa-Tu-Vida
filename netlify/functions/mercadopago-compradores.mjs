@@ -133,6 +133,24 @@ async function agregarCompradores(supabaseUrl, clave, emails) {
   return Array.isArray(insertadas) ? insertadas.length : 0;
 }
 
+// SOLO LECTURA (modo prueba): confirma que la clave de Supabase funciona y cuenta cuántos
+// de estos emails ya están en "compradores" (no devuelve ni registra los emails).
+export async function revisarSupabase(supabaseUrl, clave, emails) {
+  try {
+    const filtro = emails.length ? "&email=in.(" + emails.map(e => '"' + encodeURIComponent(e.replace(/"/g, "")) + '"').join(",") + ")" : "&limit=0";
+    const r = await fetch(`${supabaseUrl}/rest/v1/compradores?select=email${filtro}`, {
+      headers: { apikey: clave, Authorization: `Bearer ${clave}` },
+    });
+    if (!r.ok) return { conexion: `error ${r.status}: ${(await r.text()).slice(0, 200)}` };
+    const filas = await r.json();
+    const existentes = new Set((Array.isArray(filas) ? filas : []).map(f => String(f.email)));
+    const yaRegistrados = emails.filter(e => existentes.has(e)).length;
+    return { conexion: "ok", yaRegistrados, nuevosSiSeActiva: emails.length - yaRegistrados };
+  } catch (error) {
+    return { conexion: "error: " + error.message };
+  }
+}
+
 export async function sincronizar(env, ahora = () => Date.now()) {
   const inicio = ahora();
   const token = env.MP_ACCESS_TOKEN;
@@ -196,6 +214,7 @@ export async function sincronizar(env, ahora = () => Date.now()) {
   const lista = [...emails];
   let agregados = 0;
   if (modo === "activo" && lista.length) agregados = await agregarCompradores(supabaseUrl, clave, lista);
+  const supabase = modo === "prueba" ? await revisarSupabase(supabaseUrl, clave, lista) : undefined;
 
   return {
     ok: true, modo, dias, productoTexto: productoTexto || "(sin configurar)",
@@ -205,6 +224,7 @@ export async function sincronizar(env, ahora = () => Date.now()) {
     compradoresValidos: lista.length,
     pagadosPorOtraPersona: detalle.filter(v => v.pagoOtraPersona).length,
     agregadosNuevos: modo === "activo" ? agregados : "0 (modo prueba: no se escribió nada)",
+    supabase,
     descartados: motivos,
     nombresDeProductosAprobados: nombresVistos,
     diagnosticoPorProducto: diagnostico,
